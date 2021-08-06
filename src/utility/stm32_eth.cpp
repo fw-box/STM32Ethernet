@@ -92,11 +92,6 @@ static uint8_t DHCP_Started_by_user = 0;
 /* Ethernet link status periodic timer */
 static uint32_t gEhtLinkTickStart = 0;
 
-#if !defined(STM32_CORE_VERSION) || (STM32_CORE_VERSION  <= 0x01060100)
-  /* Handler for stimer */
-  static stimer_t TimHandle;
-#endif
-
 /*************************** Function prototype *******************************/
 static void Netif_Config(void);
 static err_t tcp_recv_callback(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
@@ -136,53 +131,24 @@ static void Netif_Config(void)
 * @param  htim: pointer to stimer_t or Hardware Timer
 * @retval None
 */
-#if !defined(STM32_CORE_VERSION) || (STM32_CORE_VERSION  <= 0x01060100)
-  static void scheduler_callback(stimer_t *htim)
-#elif (STM32_CORE_VERSION  <= 0x01080000)
-  static void scheduler_callback(HardwareTimer *htim)
-#else
-  static void scheduler_callback(void)
-#endif
+static void scheduler_callback(void)
 {
-#if (STM32_CORE_VERSION  <= 0x01080000)
-  UNUSED(htim);
-#endif
   stm32_eth_scheduler();
 }
 
-#if !defined(STM32_CORE_VERSION) || (STM32_CORE_VERSION  <= 0x01060100)
 /**
 * @brief  Enable the timer used to call ethernet scheduler function at regular
 *         interval.
 * @param  None
 * @retval None
 */
+#include "HardwareTimer.h"
 static void TIM_scheduler_Config(void)
 {
-  /* Set TIMx instance. */
-  TimHandle.timer = DEFAULT_ETHERNET_TIMER;
-  /* Timer set to 1ms */
-  TimerHandleInit(&TimHandle, (uint16_t)(1000 - 1), ((uint32_t)(getTimerClkFreq(DEFAULT_ETHERNET_TIMER) / (1000000)) - 1));
-  attachIntHandle(&TimHandle, scheduler_callback);
+  Timer1.setPeriod(1000000 / 1000); // in microseconds
+  Timer1.attachInterrupt(scheduler_callback);
+  Timer1.resume();
 }
-#else
-/**
-* @brief  Enable the timer used to call ethernet scheduler function at regular
-*         interval.
-* @param  None
-* @retval None
-*/
-static void TIM_scheduler_Config(void)
-{
-  /* Configure HardwareTimer */
-  HardwareTimer *EthTim = new HardwareTimer(DEFAULT_ETHERNET_TIMER);
-
-  /* Timer set to 1ms */
-  EthTim->setOverflow(1000, MICROSEC_FORMAT);
-  EthTim->attachInterrupt(scheduler_callback);
-  EthTim->resume();
-}
-#endif
 
 void stm32_eth_init(const uint8_t *mac, const uint8_t *ip, const uint8_t *gw, const uint8_t *netmask)
 {
