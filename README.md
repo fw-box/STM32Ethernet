@@ -1,69 +1,61 @@
 # STM32 Ethernet Library for Arduino
 
-With an STM32 board with Ethernet compatibility, this library allows a STM32
-board (NUCLEO, DISCOVERY, ...) to connect to the internet.  
-
-This library follows the Ethernet API from Arduino.<br>
-For more information about it please visit: http://www.arduino.cc/en/Reference/Ethernet
+The library is for 32F746GDISCOVERY Discovery kit.
 
 ## Dependency
 
-This library is based on LwIP, a Lightweight TCP/IP stack, available here:
+This library is based on LwIP.
 
-http://git.savannah.gnu.org/cgit/lwip.git
+https://github.com/stm32duino/LwIP
 
-The LwIP has been ported as Arduino library and is available thanks Arduino Library Manager.
+## Example
 
-Source: https://github.com/stm32duino/LwIP
+	#include <LwIP.h>
+	#include <STM32Ethernet.h>
 
-## Configuration
+	EthernetClient client;
 
-The LwIP has several user defined options, which is specified from within the `lwipopts.h` file.
+	// random MAC address
+	byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 
-This library provides a default user defined options file named `lwipopts_default.h`.
+	void setup() {
+	    Serial.begin(115200);
 
-User can provide his own defined options at sketch level by adding his configuration in a file named `STM32lwipopts.h` or
-extend the default one by adding some extra configuration in a file named `lwipopts_extra.h`.
+	    Serial.println("Connecting to Ethernet");
 
+	    if (!Ethernet.begin(mac)) {
+		Serial.println("ERROR: Could not connect to ethernet!");
+		while(1);
+	    }
 
+	    Serial.println("Connecting to example.com");
 
-## New alternative init procedure **!!!**
+	    if (!client.connect("example.com", 80)) {
+		Serial.println("ERROR: Could not connect to example.com!");
+		while(1);
+	    }
 
-There are alternative inits of the Ethernetinterface with following orders:
+	    Serial.println("Connected, sending request");
 
-	Ethernet.begin();
-	Ethernet.begin(ip);
-	Ethernet.begin(ip, subnet);
-	Ethernet.begin(ip, subnet, gateway);
-	Ethernet.begin(ip, subnet, gateway, dns);
+	    client.println("GET / HTTP/1.1");
+	    client.println("Host: example.com");
+	    client.println();
+	    client.flush();
 
-This is more logical. A MAC address is no more needed and will retrieved internally by the mbed MAC address!
+	    Serial.println("Request sent, printing response");
+	}
 
-You can get the MAC address with following function, this must done after Ethernet.Begin()
-	
-	uint8_t *mac;
-	Ethernet.begin();
-	mac = Ethernet.MACAddress();
+	void loop() {
+	    if (client.available()) {
+		char c = client.read();
+		Serial.print(c);
+	    }
 
-You can also set a new user based MAC address, this must done before Ethernet.begin()
+	    if (!client.connected()) {
+		Serial.println();
+		Serial.println("disconnecting.");
+		client.stop();
+		while (1);
+	    }
+	}
 
-	uint8_t newMAC[] = {0x00, 0x80, 0xE1, 0x01, 0x01, 0x01};
-	Ethernet.MACAddress(newMAC);
-	Ethernet.begin();
-
-## Note
-
-`EthernetClass::maintain()` in no more required to renew IP address from DHCP.<br>
-It is done automatically by the LwIP stack in a background task.  
-
-An Idle task is required by the LwIP stack to handle timer and data reception.<br>
-This idle task is called inside a timer callback each 1 ms by the
-function `stm32_eth_scheduler()`.<br>
-A `DEFAULT_ETHERNET_TIMER` is set in the library to `TIM14`.<br>
-`DEFAULT_ETHERNET_TIMER` can be redefined in the core variant.<br>
-Be careful to not lock the system in a function which disabling IRQ.<br>
-Call `Ethernet::schedule()` performs an update of the LwIP stack.<br>
-
-## Wiki
-
-You can find information at https://github.com/stm32duino/wiki/wiki/STM32Ethernet
