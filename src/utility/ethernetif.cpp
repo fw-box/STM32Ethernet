@@ -53,9 +53,6 @@
 #include "PeripheralPins.h"
 #include "lwip/igmp.h"
 #include "stm32_eth.h"
-#if !defined(STM32_CORE_VERSION) || (STM32_CORE_VERSION  <= 0x01050000)
-  #include "variant.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -131,10 +128,10 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef *heth)
 
       /* pin configuration */
       GPIO_InitStructure.Pin       = STM_GPIO_PIN(pin);
-      GPIO_InitStructure.Mode      = STM_PIN_MODE(pinmap_function(pin, PinMap_Ethernet));
-      GPIO_InitStructure.Pull      = STM_PIN_PUPD(pinmap_function(pin, PinMap_Ethernet));
+      GPIO_InitStructure.Mode      = STM_PIN_MODE(map);
+      GPIO_InitStructure.Pull      = STM_PIN_PUPD(map);
       GPIO_InitStructure.Speed     = GPIO_SPEED_FREQ_HIGH;
-      GPIO_InitStructure.Alternate = STM_PIN_AFNUM(pinmap_function(pin, PinMap_Ethernet));
+      GPIO_InitStructure.Alternate = STM_PIN_AFNUM(map);
       HAL_GPIO_Init(port, &GPIO_InitStructure);
 
       pin = pin_pinName(++map);
